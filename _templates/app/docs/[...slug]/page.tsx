@@ -1,40 +1,59 @@
-'use client';
-
-import { useParams, notFound } from 'next/navigation';
-import { trpc } from '@/lib/trpc/client';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { siteConfig } from '@/config/site';
+import { getCachedDoc, getCachedNavigation } from '../data';
 import { DocRenderer } from '@/core-docs/components/DocRenderer';
 import { DocSidebar } from '@/core-docs/components/DocSidebar';
+import { DocsTabsHydrator } from '@/core-docs/components/DocsTabsHydrator';
+import '@/core-docs/styles/docs.css';
 
-export default function DocsPage() {
-  const params = useParams();
-  const slugParts = params.slug as string[];
+interface Props {
+  params: Promise<{ slug: string[] }>;
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug: slugParts } = await params;
+  const slug = slugParts.join('/');
+  const doc = await getCachedDoc(slug);
+
+  if (!doc) return {};
+
+  const title = `${doc.metaTitle ?? doc.title} — ${siteConfig.name} Docs`;
+  const description = doc.metaDescription ?? `${doc.title} documentation for ${siteConfig.name}`;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `${siteConfig.url}/docs/${slug}`,
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      modifiedTime: doc.updatedAt.toISOString(),
+    },
+  };
+}
+
+export default async function DocsPage({ params }: Props) {
+  const { slug: slugParts } = await params;
   const slug = slugParts.join('/');
 
-  const { data: doc, isLoading } = trpc.docs.getBySlug.useQuery({ slug });
-  const { data: navigation } = trpc.docs.getNavigation.useQuery();
+  const [doc, navigation] = await Promise.all([
+    getCachedDoc(slug),
+    getCachedNavigation(),
+  ]);
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen">
-        <div className="w-64 shrink-0" />
-        <main className="flex-1 p-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/3" />
-            <div className="h-4 bg-gray-200 rounded w-full" />
-            <div className="h-4 bg-gray-200 rounded w-2/3" />
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  if (!doc) return notFound();
+  if (!doc) notFound();
 
   return (
-    <div className="flex min-h-screen">
-      <DocSidebar navigation={navigation ?? []} activeSlug={slug} />
-      <main className="flex-1 max-w-4xl p-8">
-        <DocRenderer doc={doc} />
+    <div className="docs-layout">
+      <DocSidebar navigation={navigation} activeSlug={slug} />
+      <main className="docs-main">
+        <DocsTabsHydrator>
+          <DocRenderer doc={doc} />
+        </DocsTabsHydrator>
       </main>
     </div>
   );
