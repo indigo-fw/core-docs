@@ -18,14 +18,11 @@ File-based docs take priority over CMS docs with same slug. Both locale-aware.
 
 ## MDX Components
 
-`<Callout type="info|warning|tip|danger">`, `<CodeTabs>` + `<Tab>`, `<Steps>` + `<Step>`, `<Badge>`. Register custom via `registerMdxComponent()`.
+Live registry: `@/core/lib/markdown/mdx-compiler` — register custom components via `registerMdxComponent()`.
 
-## Key Endpoints
+## Router
 
-- `docs.getBySlug` — unified lookup (file → CMS fallback), compiled HTML
-- `docs.getNavigation` — merged nav tree from all sources
-- `docs.search` — tsvector for CMS, substring for files
-- `docs.llmExport` — all docs as markdown (also at `/api/docs/llms.txt?lang=en`)
+Live list: `routers/docs.ts` (JSDoc per procedure → `src/generated/procedure-docs.ts` / MCP `search_tools`). Non-obvious: `search` uses tsvector for CMS docs but substring matching for file docs; `llmExport` is also served at `/api/docs/llms.txt?lang=en`.
 
 ## Wiring
 
